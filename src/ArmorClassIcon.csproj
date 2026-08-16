@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <SPTRefDir>../deps</SPTRefDir>
+    <SPTRefDir>../../../deps</SPTRefDir>
 
     <AssemblySearchPaths>
       $(SPTRefDir)/core;

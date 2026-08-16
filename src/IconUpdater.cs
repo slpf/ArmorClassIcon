@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using EFT.InventoryLogic;
-using HarmonyLib;
+using EFT.Utilities;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,18 +12,16 @@ public static class IconUpdater
 {
     private const float BadgeGap = 2f;
 
-    private static readonly FieldInfo ArmorClassIconField = AccessTools.Field(typeof(ItemViewStats), "_armorClassIcon");
-
     private static readonly ConditionalWeakTable<ItemViewStats, List<Image>> CloneCache = new();
 
     public static void Apply(ItemViewStats stats, Item item, bool examined)
     {
-        var icon = stats != null ? ArmorClassIconField.GetValue(stats) as Image : null;
+        var icon = stats != null ? stats._armorClassIcon : null;
         if (icon == null) return;
 
         HideClones(stats);
 
-        if (item is ArmorPlateItemClass) return;
+        if (item is ArmorPlate) return;
 
         if (!IsKnownType(item)) return;
 
@@ -106,7 +103,7 @@ public static class IconUpdater
 
     private static void ShowBadge(Image original, Image badge, int armorClass, int index, bool examined, bool vertical)
     {
-        var sprite = CacheResourcesPopAbstractClass.Pop<Sprite>("Mod Types/icon_type_mod_armor_plate_" + armorClass);
+        var sprite = ResourcesCache.Pop<Sprite>("Mod Types/icon_type_mod_armor_plate_" + armorClass);
         if (sprite == null) return;
 
         var rect = original.rectTransform.rect;
@@ -141,18 +138,18 @@ public static class IconUpdater
 
     private static bool IsKnownType(Item item)
     {
-        return item is ArmorItemClass or HeadwearItemClass or VestItemClass or VisorsItemClass or FaceCoverItemClass;
+        return item is Armor or Headwear or Vest or Visors or FaceCover;
     }
 
     private static bool IsEnabled(Item item)
     {
         return item switch
         {
-            ArmorItemClass => Settings.EnableBodyArmor.Value,
-            HeadwearItemClass => Settings.EnableHeadwear.Value,
-            VestItemClass => Settings.EnableArmoredRigs.Value,
-            VisorsItemClass => Settings.EnableVisors.Value,
-            FaceCoverItemClass => Settings.EnableFaceCovers.Value,
+            Armor => Settings.EnableBodyArmor.Value,
+            Headwear => Settings.EnableHeadwear.Value,
+            Vest => Settings.EnableArmoredRigs.Value,
+            Visors => Settings.EnableVisors.Value,
+            FaceCover => Settings.EnableFaceCovers.Value,
             _ => false
         };
     }
