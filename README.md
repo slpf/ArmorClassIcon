@@ -1,0 +1,1 @@
+ArmorClassIcon for SPT 4.0.0+
