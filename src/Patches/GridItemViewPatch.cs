@@ -17,6 +17,6 @@ public class GridItemViewPatch : ModulePatch
     {
         if (__instance.Item == null) return;
 
-        IconUpdater.Apply(__instance.ItemViewStats, __instance.Item, __instance.Examined);
+        IconUpdater.Apply(__instance, __instance.BottomPanel?.ItemViewStats, __instance.Item, __instance.Examined);
     }
 }

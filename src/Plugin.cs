@@ -1,7 +1,7 @@
-using ArmorClassIcon;
-using BepInEx;
 using System.Reflection;
+using ArmorClassIcon;
 using ArmorClassIcon.Patches;
+using BepInEx;
 
 [assembly: AssemblyProduct(ModInfo.Name)]
 [assembly: AssemblyTitle(ModInfo.Name)]
