@@ -3,7 +3,7 @@
 **/bin/
 **/obj/
 **/build/
-**/deps/
+**/deps40/
 **/distrib/
 launchSettings.json
 *.sln.DotSettings.user
