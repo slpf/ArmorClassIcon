@@ -27,7 +27,8 @@ public static class Settings
 
     public static ConfigEntry<string> DisplayMode;
 
-    public static readonly Dictionary<string, ConfigEntry<bool>> SlotToggles = new();
+    public static readonly Dictionary<string, ConfigEntry<bool>> SlotToggles =
+        new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly (string Id, string Name)[] PlateSlots =
     {
@@ -84,12 +85,12 @@ public static class Settings
         EnableAccessories = config.Bind(CategoryItemTypes, "Enable on accessories", true,
             "Show armor class icon on equipment components with armor.");
 
-        FleaDisplayMode = config.Bind(CategoryMode, "Flea market display mode", "Max Class",
+        FleaDisplayMode = config.Bind(CategoryMode, "Flea market display mode", "Highest Class",
             new ConfigDescription(
                 "Armor class display type for the flea market.",
                 new AcceptableValueList<string>("Highest Class", "Lowest & Highest")));
 
-        DisplayMode = config.Bind(CategoryMode, "Inventory & traders display mode", "Max Class",
+        DisplayMode = config.Bind(CategoryMode, "Inventory & traders display mode", "Highest Class",
             new ConfigDescription(
                 "Armor class display type for the inventory and trader screens.",
                 new AcceptableValueList<string>("Highest Class", "Lowest & Highest", "All Plates", "Custom")));
@@ -115,12 +116,14 @@ public static class Settings
 
     public static bool IsSlotShown(string slotId)
     {
-        return SlotToggles.TryGetValue(slotId.ToLowerInvariant(), out var toggle) ? toggle.Value : true;
+        return !string.IsNullOrEmpty(slotId)
+               && SlotToggles.TryGetValue(slotId, out ConfigEntry<bool> toggle)
+               && toggle.Value;
     }
 
     private static void OnSettingChanged(object sender, EventArgs args)
     {
-        ItemViewStatsPatch.RefreshAllViews();
+        ItemViewStatsPatch.RequestRefresh();
     }
 
     private static IconDisplayMode ParseMode(string value)

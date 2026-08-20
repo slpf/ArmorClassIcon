@@ -33,21 +33,39 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="0Harmony" />
-    <Reference Include="BepInEx" />
+    <Reference Include="0Harmony">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="spt-reflection" />
+    <Reference Include="spt-reflection">
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Assembly-CSharp" />
-    <Reference Include="ItemComponent.Types" />
-    <Reference Include="UnityEngine" />
-    <Reference Include="UnityEngine.CoreModule" />
-    <Reference Include="UnityEngine.UI" />
-    <Reference Include="UnityEngine.UIModule" />
+    <Reference Include="Assembly-CSharp">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ItemComponent.Types">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <Target Name="CopyToBuildFolder" AfterTargets="Build">
