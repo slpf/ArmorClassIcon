@@ -11,6 +11,13 @@ namespace ArmorClassIcon;
 
 public static class IconUpdater
 {
+    private enum BadgeLayout
+    {
+        Inventory,
+        Trader,
+        Flea
+    }
+
     private const float BadgeGap = 1.5f;
     private const float BadgePadding = 3f;
     private const float TraderBadgeScale = 0.9f;
@@ -20,41 +27,36 @@ public static class IconUpdater
     private static readonly ConditionalWeakTable<ItemViewStats, List<Image>> CloneCache = new();
     private static readonly ConditionalWeakTable<GridItemView, List<Image>> BadgeCache = new();
     private static readonly ConditionalWeakTable<ItemViewStats, StrongBox<Vector2>> IconBaseSizes = new();
-
-    private static Vector2 _referenceIconSize = Vector2.zero;
-    private static float _referenceIconScale;
+    private static readonly ConditionalWeakTable<Canvas,
+        Dictionary<(EItemViewType? Context, System.Type ViewClass), float>> ReferenceIconHeights = new();
 
     public static void Apply(GridItemView view, ItemViewStats stats, Item item, bool examined)
     {
-        var icon = stats != null ? stats._armorClassIcon : null;
+        Image icon = stats != null ? stats._armorClassIcon : null;
 
         HideClones(stats);
         HideBadges(view);
 
         if (item is ArmorPlate) return;
 
+        if (icon != null) icon.gameObject.SetActive(false);
+
+        if (view != null && !view.IsSearched) return;
+
         if (!IsKnownType(item)) return;
 
-        if (!IsScreenEnabled(view))
-        {
-            if (icon != null) icon.gameObject.SetActive(false);
-            return;
-        }
-
-        var mode = ResolveDisplayMode(view);
-        var classes = CollectClasses(item, mode);
-
-        if (classes.Count == 0)
-        {
-            if (icon != null) icon.gameObject.SetActive(false);
-            return;
-        }
+        if (!IsScreenEnabled(view)) return;
 
         if (!IsEnabled(item)) return;
 
+        IconDisplayMode mode = ResolveDisplayMode(view);
+        List<int> classes = CollectClasses(item, mode);
+
+        if (classes.Count == 0) return;
+
         if (icon != null)
         {
-            ShowBadges(stats, icon, classes, mode, examined);
+            ShowBadges(view, stats, icon, classes, mode, examined);
             return;
         }
 
@@ -144,7 +146,8 @@ public static class IconUpdater
         }
     }
 
-    private static void ShowBadges(ItemViewStats stats, Image icon, List<int> classes, IconDisplayMode mode,
+    private static void ShowBadges(GridItemView view, ItemViewStats stats, Image icon, List<int> classes,
+        IconDisplayMode mode,
         bool examined)
     {
         if (!IconBaseSizes.TryGetValue(stats, out var box))
@@ -157,14 +160,7 @@ public static class IconUpdater
         IconBaseSizes.TryGetValue(stats, out box);
         var baseSize = box != null ? box.Value : icon.rectTransform.rect.size;
 
-        var lossyScale = icon.transform.lossyScale.y;
-
-        if (_referenceIconSize == Vector2.zero || baseSize == _referenceIconSize)
-        {
-            _referenceIconSize = baseSize;
-
-            if (lossyScale > 0.0001f) _referenceIconScale = lossyScale;
-        }
+        StoreReferenceIconHeight(view, icon, baseSize);
 
         var vertical = mode == IconDisplayMode.MinMax;
 
@@ -266,15 +262,92 @@ public static class IconUpdater
 
     private static Vector2 GetLocalBadgeSize(GridItemView view, Sprite sprite)
     {
-        var viewScale = view.transform.lossyScale.y;
+        float viewScale = Mathf.Abs(view.transform.lossyScale.y);
+        Canvas canvas = GetRootCanvas(view);
 
-        if (_referenceIconSize.y > 0f && _referenceIconScale > 0f && viewScale > 0.0001f && sprite.rect.height > 0f)
+        if (canvas != null && viewScale > 0.0001f && sprite.rect.height > 0f
+            && ReferenceIconHeights.TryGetValue(canvas,
+                out Dictionary<(EItemViewType? Context, System.Type ViewClass), float> heights))
         {
-            var targetHeight = _referenceIconSize.y * (_referenceIconScale / viewScale) * TraderBadgeScale;
-            return sprite.rect.size * (targetHeight / sprite.rect.height);
+            BadgeLayout layout = ResolveBadgeLayout(view);
+            EItemViewType? context = view.ItemContext?.ViewType;
+            bool exactMatch = heights.TryGetValue((context, view.GetType()), out float worldHeight);
+            bool contextMatch = !exactMatch && TryGetContextHeight(heights, context, out worldHeight);
+            bool inventoryFallback = false;
+
+            if (!exactMatch && !contextMatch)
+            {
+                EItemViewType fallbackContext = layout == BadgeLayout.Trader
+                    ? EItemViewType.TradingPlayer
+                    : EItemViewType.Inventory;
+
+                if (!TryGetContextHeight(heights, fallbackContext, out worldHeight)
+                    && fallbackContext != EItemViewType.Inventory)
+                    inventoryFallback = TryGetContextHeight(heights, EItemViewType.Inventory, out worldHeight);
+            }
+
+            if (worldHeight > 0f)
+            {
+                float layoutScale = inventoryFallback ? TraderBadgeScale : 1f;
+                float targetHeight = worldHeight / viewScale * layoutScale;
+                return sprite.rect.size * (targetHeight / sprite.rect.height);
+            }
         }
 
-        return sprite.rect.size;
+        return sprite.rect.size * (ResolveBadgeLayout(view) == BadgeLayout.Trader ? TraderBadgeScale : 1f);
+    }
+
+    private static bool TryGetContextHeight(
+        Dictionary<(EItemViewType? Context, System.Type ViewClass), float> heights,
+        EItemViewType? context,
+        out float height)
+    {
+        float total = 0f;
+        int count = 0;
+
+        foreach (KeyValuePair<(EItemViewType? Context, System.Type ViewClass), float> entry in heights)
+        {
+            if (entry.Key.Context != context) continue;
+
+            total += entry.Value;
+            count++;
+        }
+
+        height = count > 0 ? total / count : 0f;
+        return count > 0;
+    }
+
+    private static void StoreReferenceIconHeight(GridItemView view, Image icon, Vector2 baseSize)
+    {
+        if (view == null) return;
+
+        Canvas canvas = GetRootCanvas(icon);
+        float worldHeight = baseSize.y * Mathf.Abs(icon.transform.lossyScale.y);
+
+        if (canvas == null || worldHeight <= 0.0001f || float.IsNaN(worldHeight) || float.IsInfinity(worldHeight)) return;
+
+        Dictionary<(EItemViewType? Context, System.Type ViewClass), float> heights =
+            ReferenceIconHeights.GetOrCreateValue(canvas);
+        heights[(view.ItemContext?.ViewType, view.GetType())] = worldHeight;
+    }
+
+    private static Canvas GetRootCanvas(Component component)
+    {
+        Canvas canvas = component != null ? component.GetComponentInParent<Canvas>() : null;
+        return canvas != null ? canvas.rootCanvas : null;
+    }
+
+    private static BadgeLayout ResolveBadgeLayout(GridItemView view)
+    {
+        EItemViewType? viewType = view?.ItemContext?.ViewType;
+
+        return viewType switch
+        {
+            EItemViewType.Ragfair or EItemViewType.NewOffer => BadgeLayout.Flea,
+            EItemViewType.TradingTrader or EItemViewType.TradingSell or EItemViewType.TradingPlayer =>
+                BadgeLayout.Trader,
+            _ => BadgeLayout.Inventory
+        };
     }
 
     private static void FitBadgesToView(GridItemView view, Vector2[] sizes)

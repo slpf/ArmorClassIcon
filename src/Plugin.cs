@@ -23,4 +23,9 @@ public class Plugin : BaseUnityPlugin
         new ItemViewStatsPatch().Enable();
         new GridItemViewPatch().Enable();
     }
+
+    private void LateUpdate()
+    {
+        ItemViewStatsPatch.RefreshIfRequested();
+    }
 }

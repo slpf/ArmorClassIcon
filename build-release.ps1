@@ -7,6 +7,7 @@ Set-StrictMode -Version Latest
 $projectPath = Join-Path $PSScriptRoot "src\ArmorClassIcon.csproj"
 $modInfoPath = Join-Path $PSScriptRoot "src\ModInfo.cs"
 $bepInExPath = Join-Path $PSScriptRoot "build\BepInEx"
+$pluginPath = Join-Path $bepInExPath "plugins\ArmorClassIcon.dll"
 $distributionPath = Join-Path $PSScriptRoot "distrib"
 
 if (!(Test-Path -LiteralPath $projectPath -PathType Leaf))
@@ -45,9 +46,9 @@ if ($LASTEXITCODE -ne 0)
     throw "Release build failed with exit code $LASTEXITCODE"
 }
 
-if (!(Test-Path -LiteralPath $bepInExPath -PathType Container))
+if (!(Test-Path -LiteralPath $pluginPath -PathType Leaf))
 {
-    throw "Build output was not found: $bepInExPath"
+    throw "Build output was not found: $pluginPath"
 }
 
 New-Item -ItemType Directory -Path $distributionPath -Force | Out-Null
@@ -55,7 +56,7 @@ $archivePath = Join-Path $distributionPath "ArmorClassIcon-$version.zip"
 $archiveBasePath = Split-Path -Parent $bepInExPath
 $archiveBasePrefix = [System.IO.Path]::GetFullPath($archiveBasePath).TrimEnd('\', '/') +
     [System.IO.Path]::DirectorySeparatorChar
-[System.IO.FileInfo[]]$files = @(Get-ChildItem -LiteralPath $bepInExPath -File -Recurse | Sort-Object FullName)
+[System.IO.FileInfo[]]$files = @(Get-Item -LiteralPath $pluginPath)
 
 if ($files.Count -eq 0)
 {
